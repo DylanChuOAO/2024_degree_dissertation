@@ -21,6 +21,7 @@ from src.update import BenignUpdate, CompromisedUpdate
 
 if __name__ == '__main__':
     # parse args，解析程式的命令行參數。
+    a = 1 - 2
     args = args_parser()
     # 檢查是否有可用的 GPU，如果有的話，將模型放在 GPU 上進行訓練，否則使用 CPU。
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
