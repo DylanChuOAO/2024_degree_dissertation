@@ -23,3 +23,17 @@ def untargeted_attack(w, args):
     
     return mpaf
 
+#torch.zeros_like()
+'''
+>>> input = torch.empty(2, 3)
+>>> torch.zeros_like(input)
+tensor([[ 0.,  0.,  0.],
+        [ 0.,  0.,  0.]])
+'''
+#copy_
+'''
+a = torch.tensor([[1,2,3],[4,5,6]], device="cuda")
+b = torch.tensor([7.0,8.0,9.0], requires_grad=True)
+a.copy_(b)
+print(a) #tensor([[7, 8, 9], [7, 8, 9]], device='cuda:0')
+'''

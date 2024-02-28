@@ -8,11 +8,12 @@ from torchvision.models import resnet18
 from utils.test import test_img
 from src.aggregation import fedavg
 
+#歐幾里得距離
 def euclid(v1, v2):
     diff = v1 - v2
     return torch.matmul(diff, diff.T)
-    #歐基里德
     
+#vectorization 單/多向量化
 def multi_vectorization(w_locals, args):
     vectors = copy.deepcopy(w_locals)
     
@@ -30,6 +31,7 @@ def single_vectorization(w_glob, args):
 
     return torch.cat(list(vector.values()))
 
+#計算特徵圖之間的像素級歐氏距離
 def pairwise_distance(w_locals, args):
     
     vectors = multi_vectorization(w_locals, args)
@@ -39,8 +41,16 @@ def pairwise_distance(w_locals, args):
         for j, v_j in enumerate(vectors[i:]):
             distance[i][j + i] = distance[j + i][i] = euclid(v_i, v_j)
                 
-    return distance    
+    return distance  
+#torch.zeros  
+'''
+>>> torch.zeros(2, 3)
+tensor([[ 0.,  0.,  0.],
+        [ 0.,  0.,  0.]])
 
+>>> torch.zeros(5)
+tensor([ 0.,  0.,  0.,  0.,  0.])
+'''
 def krum(w_locals, c, args):    
     n = len(w_locals) - c
     

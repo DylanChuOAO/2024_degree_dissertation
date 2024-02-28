@@ -21,7 +21,6 @@ from src.update import BenignUpdate, CompromisedUpdate
 
 if __name__ == '__main__':
     # parse args，解析程式的命令行參數。
-    a = 1 - 2
     args = args_parser()
     # 檢查是否有可用的 GPU，如果有的話，將模型放在 GPU 上進行訓練，否則使用 CPU。
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
@@ -42,7 +41,7 @@ if __name__ == '__main__':
     cnt = 0
     check_acc = 0
 
-    # sample users
+    # sample users (noniid)
     dict_users = noniid(dataset_train, args)
     net_glob = resnet18(num_classes = args.num_classes).to(args.device)
 
@@ -64,8 +63,10 @@ if __name__ == '__main__':
 
         for idx in idxs_users:
             if idx in compromised_idxs:
+                # untarget
                 if args.p == "untarget":
                     w_locals.append(copy.deepcopy(untargeted_attack(net_glob.state_dict(), args)))
+                # target
                 else: 
                     local = CompromisedUpdate(args = args, dataset = dataset_train, idxs = dict_users[idx])
                     w = local.train(net = copy.deepcopy(net_glob).to(args.device))

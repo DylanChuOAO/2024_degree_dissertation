@@ -4,6 +4,13 @@ def args_parser():
     parser = argparse.ArgumentParser()
     
     # federated learning arguments
+    # --method: 方法(krum)
+    # --global_ep: round 幾次 (200次)
+    # --alpha: 隨機分佈數值 alpha (10.0)
+    # --num_clients: users 個數 (10)
+    # --num_data: 每個客戶端標籤傾斜的資料數量 (100)
+    # --quantity_skew: 傾斜 (??)
+    
     parser.add_argument('--method', type=str, default='krum', help="aggregation method")
     parser.add_argument('--global_ep', type=int, default=200, help="total number of communication rounds")
     parser.add_argument('--alpha', default=10.0, type=float, help="random distribution fraction alpha")

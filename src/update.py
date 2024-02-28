@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 
 from utils.dataset import DatasetSplit
 
+#Benign: 良性的
 class BenignUpdate(object):
     def __init__(self, args, dataset=None, idxs=None):
         self.args = args
@@ -71,3 +72,11 @@ class CompromisedUpdate(object):
             w_t.data = (w_t.data - w.data) * self.args.mp_alpha
         
         return net.state_dict()
+#zip()        
+"""
+>>> a = [ 1 , 2 , 3 ]
+>>> b = [ 4 , 5 , 6 ]
+>>> zipped = zip ( a , b )     # 回傳一個物件
+>>> list ( zipped )  # list() 轉換為列表
+[ ( 1 , 4 ) , ( 2 , 5 ) , ( 3 , 6 ) ]
+"""
