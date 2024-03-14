@@ -12,6 +12,8 @@ def test_img(net_g, dataset, args):
     with torch.no_grad():
         net_g.eval()
         for idx, (data, target) in enumerate(data_loader):
+            #if(idx==1): print("test: ",idx, data, target)
+            target = target.type(torch.ByteTensor) #加入ByteTensor Ru
             if args.gpu != -1:
                 data, target = data.to(args.device), target.to(args.device)
             log_probs = net_g(data)

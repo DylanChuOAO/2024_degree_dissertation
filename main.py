@@ -19,6 +19,9 @@ from utils.attack import compromised_clients, untargeted_attack
 from src.aggregation import fedavg
 from src.update import BenignUpdate, CompromisedUpdate
 
+#from src.local_update import modelDB
+#python main.py --gpu 0 --method krum --tsboard --c_frac 0.0 --quantity_skew --num_clients 2 --global_ep 2 
+#Ru
 if __name__ == '__main__':
     # parse args，解析程式的命令行參數。
     args = args_parser()
@@ -36,6 +39,10 @@ if __name__ == '__main__':
     torch.cuda.manual_seed_all(args.seed)
 
     dataset_train, dataset_test, dataset_val = load_data(args)
+    '''
+    print("dataset_test: ")
+    print(dataset_test)
+    '''
     
     # early stopping hyperparameters
     cnt = 0
@@ -44,9 +51,10 @@ if __name__ == '__main__':
     # sample users (noniid)
     dict_users = noniid(dataset_train, args)
     net_glob = resnet18(num_classes = args.num_classes).to(args.device)
+    tmp_net = copy.deepcopy(net_glob).to(args.device)
 
     net_glob.train()
-
+    
     # copy weights
     w_glob = net_glob.state_dict()
 
@@ -61,12 +69,13 @@ if __name__ == '__main__':
         compromised_num = int(args.c_frac * selected_clients)
         idxs_users = np.random.choice(range(args.num_clients), selected_clients, replace=False)
 
+        localBenignModels={} #Ru
         for idx in idxs_users:
             if idx in compromised_idxs:
-                # untarget
+                # untarget: transmit the fake update
                 if args.p == "untarget":
                     w_locals.append(copy.deepcopy(untargeted_attack(net_glob.state_dict(), args)))
-                # target
+                # target: modify the global model’s behavior on a small number of samples
                 else: 
                     local = CompromisedUpdate(args = args, dataset = dataset_train, idxs = dict_users[idx])
                     w = local.train(net = copy.deepcopy(net_glob).to(args.device))
@@ -75,11 +84,25 @@ if __name__ == '__main__':
                 local = BenignUpdate(args = args, dataset = dataset_train, idxs = dict_users[idx])
                 w = local.train(net = copy.deepcopy(net_glob).to(args.device))
                 w_locals.append(copy.deepcopy(w))
+                # copy weight to net_glob
+                tmp_net.load_state_dict(w)
+                local.test(idx = idx ,net = tmp_net, test_dataset = dataset_test, args = args) #Ru
+                
+                #print(localBenignModels[idx]) #Ru
+        '''
+        #Model給我如何執行 (先用w1)
+        #測試
+        for benignIdx in localBenignModels: #Ru
+            #local_DB = modelDB(localBenignModels[benignIdx], benignIdx)
+            pass
+        #test_img
+        
+        ##開始加code......
+        #w = local.train(net = copy.deepcopy(net_glob).to(args.device))
 
+        '''
         # update global weights
         if args.method == 'fedavg':
-            # 改成 
-            # w_local_1 = fedavg(w_locals)
             w_glob = fedavg(w_locals)
         elif args.method == 'krum':
             w_glob, _ = krum(w_locals, compromised_num, args)
@@ -95,7 +118,11 @@ if __name__ == '__main__':
         # copy weight to net_glob
         net_glob.load_state_dict(w_glob)
 
-        test_acc, test_loss = test_img(net_glob.to(args.device), dataset_test, args)
+        test_acc, test_loss = test_img(net_glob.to(args.device), dataset_test, args) #Ru
+        #TestData -> (Wg) (原先)
+        #Wi_TrainData -> (Wg) (改)
+        #印出來檢查
+        #test_acc, test_loss = test_img(net_glob.to(args.device), dataset_test, args)
 
         if args.debug:
             print(f"Round: {iter}")

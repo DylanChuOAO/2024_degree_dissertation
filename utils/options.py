@@ -8,8 +8,12 @@ def args_parser():
     # --global_ep: round 幾次 (200次)
     # --alpha: 隨機分佈數值 alpha (10.0)
     # --num_clients: users 個數 (10)
-    # --num_data: 每個客戶端標籤傾斜的資料數量 (100)
+    # --num_data: users 有多少個 data (100) ??
     # --quantity_skew: 傾斜 (??)
+    # --frac: 客戶比例 (??)
+    # --ratio: 數據大小比率
+    # --local_ep: local epochs train 幾次
+    # --local_bs: local batch size: B
     
     parser.add_argument('--method', type=str, default='krum', help="aggregation method")
     parser.add_argument('--global_ep', type=int, default=200, help="total number of communication rounds")
@@ -17,7 +21,7 @@ def args_parser():
     parser.add_argument('--num_clients', type=int, default=10, help="number of clients: K")
     parser.add_argument('--num_data', type=int, default=100, help="number of data per client for label skew")
     parser.add_argument('--quantity_skew', action='store_true', help='quantity_skew')
-    parser.add_argument('--num_pretrain', type=int, default=50, help="number of data for pretraining")
+    parser.add_argument('--num_pretrain', type=int, default=50, help="number of data for pretraining") #??
     parser.add_argument('--frac', type=float, default=1.0, help="fraction of clients: C")
     parser.add_argument('--ratio', type=float, default=1.0, help="ratio of datasize")
     parser.add_argument('--local_ep', type=int, default=5, help="number of local epochs: E")
@@ -40,6 +44,8 @@ def args_parser():
     parser.add_argument('--delta', type=float, default=0.01, help="hyperparameter of early stopping")
 
     # poisoning arguments
+    # --c_frac: 壞人的比例
+    # hyperparameter: 參數中的參數
     parser.add_argument('--c_frac', default=0.0, type=float, help="fraction of compromised clients")
     parser.add_argument('--mp_alpha', type=float, default=10.0, help="hyperparameter for targeted model attack")
     parser.add_argument('--p', type=str, default='normal', help="model poisoning attack (target, untarget) or data poisoning")

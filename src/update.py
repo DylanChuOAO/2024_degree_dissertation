@@ -3,7 +3,7 @@ import copy
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-
+from utils.test import test_img #Ru
 from utils.dataset import DatasetSplit
 
 #Benign: 良性的
@@ -12,6 +12,7 @@ class BenignUpdate(object):
         self.args = args
         self.loss_func = nn.CrossEntropyLoss()
         self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True, drop_last=True)
+        self.local_training_dataset = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True, drop_last=True) #Ru
         
     def train(self, net):
 
@@ -19,26 +20,31 @@ class BenignUpdate(object):
         
         # train and update
         optimizer = torch.optim.SGD(net.parameters(), lr=self.args.lr)
-
         for iter in range(self.args.local_ep):
             for batch_idx, (images, labels) in enumerate(self.ldr_train):
+                #if(batch_idx<3): print("train: ",batch_idx ,images, labels) #Ru
+                labels = labels.type(torch.ByteTensor) #加入ByteTensor Ru
                 optimizer.zero_grad()
                 images, labels = images.to(self.args.device), labels.to(self.args.device)
                 
                 log_probs = net(images)
                 
-                #log_probs = torch.tensor(log_probs, dtype=torch.float32).cuda()
-                #labels = torch.tensor(labels, dtype=torch.int64).cuda()
-                                             
                 loss = self.loss_func(log_probs, labels.squeeze(dim=-1))
-                #loss = self.loss_func(log_probs, labels.squeeze(dim=-1))
-
+             
                 loss.backward()
                 
                 optimizer.step()
 
-        return net.state_dict()
-
+        return net.state_dict() #回傳weight
+    def test(self, idx, net, test_dataset, args):
+        
+        test_acc, test_loss = test_img(net.to(args.device), test_dataset, args) #Ru
+        print(f"idx: {idx}")
+        print(f"Test accuracy: {test_acc}")
+        print(f"Test loss: {test_loss}")
+        #test
+        
+# target(去看paper)
 class CompromisedUpdate(object):
     def __init__(self, args, dataset=None, idxs=None):
         self.args = args
