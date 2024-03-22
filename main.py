@@ -19,9 +19,18 @@ from utils.attack import compromised_clients, untargeted_attack
 from src.aggregation import fedavg
 from src.update import BenignUpdate, CompromisedUpdate
 
-#from src.local_update import modelDB
-#python main.py --gpu 0 --method krum --tsboard --c_frac 0.0 --quantity_skew --num_clients 2 --global_ep 2 
+#python main.py --gpu 0 --method fedavg --tsboard --c_frac 0.2 --quantity_skew --num_clients 10 --global_ep 5 --debug
 #Ru
+
+#Ru
+def test(idx, net, test_dataset, args):  
+    test_acc, test_loss = test_img(net.to(args.device), test_dataset, args) #Ru
+    print(f"idx: {idx}")
+    print(f"Test accuracy: {test_acc}")
+    print(f"Test loss: {test_loss}")
+    #test
+#Ru end
+
 if __name__ == '__main__':
     # parse args，解析程式的命令行參數。
     args = args_parser()
@@ -39,10 +48,6 @@ if __name__ == '__main__':
     torch.cuda.manual_seed_all(args.seed)
 
     dataset_train, dataset_test, dataset_val = load_data(args)
-    '''
-    print("dataset_test: ")
-    print(dataset_test)
-    '''
     
     # early stopping hyperparameters
     cnt = 0
@@ -69,26 +74,46 @@ if __name__ == '__main__':
         compromised_num = int(args.c_frac * selected_clients)
         idxs_users = np.random.choice(range(args.num_clients), selected_clients, replace=False)
 
-        localBenignModels={} #Ru
+        idxModelTraindata={} # RU: reset the dict, key=idx, value=(model of the idx, trainDataSet of the idx)
         for idx in idxs_users:
             if idx in compromised_idxs:
                 # untarget: transmit the fake update
                 if args.p == "untarget":
                     w_locals.append(copy.deepcopy(untargeted_attack(net_glob.state_dict(), args)))
+                    local = CompromisedUpdate(args = args, dataset = dataset_train, idxs = dict_users[idx])#Ru add
+                    idxModelTraindata[idx]=(w_locals[-1], local.data_train_i) #Ru add
                 # target: modify the global model’s behavior on a small number of samples
                 else: 
                     local = CompromisedUpdate(args = args, dataset = dataset_train, idxs = dict_users[idx])
                     w = local.train(net = copy.deepcopy(net_glob).to(args.device))
                     w_locals.append(copy.deepcopy(w))
+                    idxModelTraindata[idx]=(w_locals[-1], local.data_train_i) #Ru add
             else:
                 local = BenignUpdate(args = args, dataset = dataset_train, idxs = dict_users[idx])
                 w = local.train(net = copy.deepcopy(net_glob).to(args.device))
                 w_locals.append(copy.deepcopy(w))
+                idxModelTraindata[idx]=(w_locals[-1], local.data_train_i) #Ru add
                 # copy weight to net_glob
                 tmp_net.load_state_dict(w)
-                local.test(idx = idx ,net = tmp_net, test_dataset = dataset_test, args = args) #Ru
-                
-                #print(localBenignModels[idx]) #Ru
+                test(idx = idx ,net = tmp_net, test_dataset = dataset_test, args = args) #Ru
+                test(idx = idx ,net = tmp_net, test_dataset = local.data_train_i, args = args) #Ru
+                #.ldr_train 帶入.dataset_test #Ru
+        # RU: begin
+        # evaluate each local model in idxModelTraindata={} (key=idx, value=(model of the idx, trainDataSet of the idx))
+        # record the result with dict testResults: key=( w_i, t_j)= (acc, loss)
+        # e.g. at 4-th iter (iter=4), testing model w_5 (w_i=5) with dataSet T_3 (t_j=3), and 
+        # get the testing results: acc=0.6723, loss=1.2345, then: testResults[(4,5,3)]=(0.6723,1.2345)
+        testResults={} # key=( w_i, t_j)= (acc, loss)
+        print("do evaluation for all models, iter=", iter)
+        for idx in idxs_users:
+            (w_i, dataset_i)=idxModelTraindata[idx]
+            tmp_net.load_state_dict(w_i)
+            test(idx = idx ,net = tmp_net, test_dataset = dataset_i, args = args) #Ru
+        # RU: end    
+        
+        
+        
+         
         '''
         #Model給我如何執行 (先用w1)
         #測試
@@ -151,3 +176,4 @@ if __name__ == '__main__':
 
     if args.tsboard:
         writer.close()
+        
