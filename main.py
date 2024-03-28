@@ -13,21 +13,24 @@ from tqdm import trange
 from utils.options import args_parser
 from utils.sampling import noniid
 from utils.dataset import load_data
-from utils.test import test_img
+from utils.test import test_img, test_img_5net
 from utils.byzantine_fl import krum, trimmed_mean, fang, dummy_contrastive_aggregation
 from utils.attack import compromised_clients, untargeted_attack
 from src.aggregation import fedavg
 from src.update import BenignUpdate, CompromisedUpdate
 
 #python main.py --gpu 0 --method fedavg --tsboard --c_frac 0.2 --quantity_skew --num_clients 10 --global_ep 5 --debug
+#python main.py --gpu 0 --method krum --tsboard --c_frac 0.2 --quantity_skew --num_clients 5 --global_ep 1
 #Ru
 
 #Ru
 def test(idx, net, test_dataset, args):  
     test_acc, test_loss = test_img(net.to(args.device), test_dataset, args) #Ru
-    print(f"idx: {idx}")
-    print(f"Test accuracy: {test_acc}")
-    print(f"Test loss: {test_loss}")
+    #print(f"idx: {idx}")
+    #print(f"Test accuracy: {test_acc}")
+    #print(f"Test loss: {test_loss}")
+    
+    return test_acc, test_loss
     #test
 #Ru end
 
@@ -36,6 +39,7 @@ if __name__ == '__main__':
     args = args_parser()
     # 檢查是否有可用的 GPU，如果有的話，將模型放在 GPU 上進行訓練，否則使用 CPU。
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
+    print("torch.cuda.is_available(): ",torch.cuda.is_available())
     #如果啟用 TensorBoard，則創建一個 TensorBoard 寫入器。
     if args.tsboard:
         writer = SummaryWriter(f'runs/data')
@@ -67,6 +71,11 @@ if __name__ == '__main__':
         compromised_idxs = compromised_clients(args)
     else:
         compromised_idxs = []
+        
+        
+    # 建立一個10x5的二維字典, 每個 clients 儲存 5 個
+    # local_storage[][5] = {} 'iter': -1, 'w_idx': -1, 'model': none, 'acc': -1.0, 'loss': -1.0
+    local_storage = {i: {j: (-1, -1, None, -1.0, -1.0) for j in range(5)} for i in range(args.num_clients)}
     
     for iter in trange(args.global_ep):
         w_locals = []
@@ -94,26 +103,106 @@ if __name__ == '__main__':
                 w_locals.append(copy.deepcopy(w))
                 idxModelTraindata[idx]=(w_locals[-1], local.data_train_i) #Ru add
                 # copy weight to net_glob
-                tmp_net.load_state_dict(w)
-                test(idx = idx ,net = tmp_net, test_dataset = dataset_test, args = args) #Ru
-                test(idx = idx ,net = tmp_net, test_dataset = local.data_train_i, args = args) #Ru
+                #tmp_net.load_state_dict(w)
+                #test(idx = idx ,net = tmp_net, test_dataset = dataset_test, args = args) #Ru
+                #test(idx = idx ,net = tmp_net, test_dataset = local.data_train_i, args = args) #Ru
                 #.ldr_train 帶入.dataset_test #Ru
-        # RU: begin
+        # Ru: begin 
         # evaluate each local model in idxModelTraindata={} (key=idx, value=(model of the idx, trainDataSet of the idx))
         # record the result with dict testResults: key=( w_i, t_j)= (acc, loss)
         # e.g. at 4-th iter (iter=4), testing model w_5 (w_i=5) with dataSet T_3 (t_j=3), and 
         # get the testing results: acc=0.6723, loss=1.2345, then: testResults[(4,5,3)]=(0.6723,1.2345)
-        testResults={} # key=( w_i, t_j)= (acc, loss)
+        testResults = {} # key = (w_i, t_j) = (w_model ,acc, loss)
+        
         print("do evaluation for all models, iter=", iter)
+        '''
+        (w_i testing dataset_train_i)
         for idx in idxs_users:
             (w_i, dataset_i)=idxModelTraindata[idx]
             tmp_net.load_state_dict(w_i)
             test(idx = idx ,net = tmp_net, test_dataset = dataset_i, args = args) #Ru
-        # RU: end    
+        '''
         
+        for idx_i in idxs_users: #t_i
+            for idx_j in idxs_users: #w_j
+                if idx_i in compromised_idxs:
+                    pass
+                else: #Benign Models
+                    # copy weight to net_glob
+                    tmp_net.load_state_dict(idxModelTraindata[idx_j][0])
+                    test_acc, test_loss = test(idx = idx_i ,net = tmp_net, test_dataset = idxModelTraindata[idx_i][1], args = args)
+                    testResults[idx_i, idx_j] = (idxModelTraindata[idx_j][0] ,copy.copy(test_acc), copy.copy(test_loss))
+                    
+        # update local_storage (acc)
+        # local_storage[][5] = {} 'iter': -1, 'w_idx': -1, 'model': none, 'acc': -1.0, 'loss': -1.0
+        # testResults(w_i, t_j)= (w_model ,acc, loss)
+        for idx_i in idxs_users: #t_i
+            for idx_j in idxs_users: #w_j
+                if idx_i in compromised_idxs:
+                    pass
+                else: #Benign Models
+                    self_check = 0
+                    for k in range(5): #跟上回的自己比(w_j)
+                        if(local_storage[idx_i][k][1] == idx_j):
+                            if(testResults[idx_i, idx_j][1].item() > local_storage[idx_i][k][3]):
+                                local_storage[idx_i][k] = (iter, 
+                                                           copy.copy(idx_j), 
+                                                           copy.copy(testResults[idx_i, idx_j][0]), 
+                                                           copy.copy(testResults[idx_i, idx_j][1].item()), 
+                                                           copy.copy(testResults[idx_i, idx_j][2]))
+                                self_check = 1
+                                break
+                            else: #(testResults[idx_i, idx_j][0].item() <= local_storage[idx_i][k][3])
+                                self_check = 1
+                                break
+                    if (self_check == 0):
+                        tmp_int = 0    
+                        tmp_acc = local_storage[idx_i][0][3] 
+                        for k in range(5): #找acc最小值
+                            for m in range(1, 5): 
+                                if(tmp_acc > local_storage[idx_i][m][3]):
+                                    tmp_int = m
+                                    tmp_acc = local_storage[idx_i][m][3]
+                            local_storage[idx_i][tmp_int] = (iter, 
+                                                            copy.copy(idx_j), 
+                                                            copy.copy(testResults[idx_i, idx_j][0]), 
+                                                            copy.copy(testResults[idx_i, idx_j][1].item()), 
+                                                            copy.copy(testResults[idx_i, idx_j][2]))
+                            break
+                        
+        #print local_storage_t_i
+        #'iter': -1, 'w_idx': -1, 'model': none, 'acc': -1.0, 'loss': -1.0
+        for idx_i in range(args.num_clients): #t_i
+            if idx_i in compromised_idxs:
+                pass
+            else:
+                '''
+                print("idx:",idx_i)
+                print(local_storage[idx_i])
+                print("\n")
+                
+                for i in range(5):
+                    print("idx_i:", idx_i)
+                    print("'iter':", local_storage[idx_i][i][0])
+                    print("'w_idx':", local_storage[idx_i][i][1])
+                    print("'model':", local_storage[idx_i][i][2])
+                    print("'acc':", local_storage[idx_i][i][3])
+                    print("'loss':", local_storage[idx_i][i][4])
+                    print("\n")
+                ''' 
+        nets_w = [] 
+        #
+
+        for i in range(5): # client[0]中的5個storage
+            if(local_storage[0][i][2] != None):
+                tmp_net = copy.deepcopy(net_glob).to(args.device)
+                tmp_net.load_state_dict(local_storage[0][i][2])
+                nets_w.append(tmp_net)
+                #tmp_net.load_state_dict(idxModelTraindata[idx_j][0])
+        #tests_acc = test_img_5net(nets_w, dataset_test, args)  
+        #test_acc, test_loss = test_img(net_glob.to(args.device), dataset_test, args)   
+        # Ru: end    
         
-        
-         
         '''
         #Model給我如何執行 (先用w1)
         #測試
@@ -146,7 +235,7 @@ if __name__ == '__main__':
         test_acc, test_loss = test_img(net_glob.to(args.device), dataset_test, args) #Ru
         #TestData -> (Wg) (原先)
         #Wi_TrainData -> (Wg) (改)
-        #印出來檢查
+        
         #test_acc, test_loss = test_img(net_glob.to(args.device), dataset_test, args)
 
         if args.debug:
