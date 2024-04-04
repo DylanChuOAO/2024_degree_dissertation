@@ -19,8 +19,8 @@ from utils.attack import compromised_clients, untargeted_attack
 from src.aggregation import fedavg
 from src.update import BenignUpdate, CompromisedUpdate
 
-#python main.py --gpu 0 --method fedavg --tsboard --c_frac 0.2 --quantity_skew --num_clients 10 --global_ep 5 --debug
 #python main.py --gpu 0 --method krum --tsboard --c_frac 0.2 --quantity_skew --num_clients 5 --global_ep 1
+#python main.py --gpu 0 --method krum --tsboard --quantity_skew --num_clients 5 --global_ep 1
 #Ru
 
 #Ru
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     args = args_parser()
     # 檢查是否有可用的 GPU，如果有的話，將模型放在 GPU 上進行訓練，否則使用 CPU。
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-    print("torch.cuda.is_available(): ",torch.cuda.is_available())
+    print("torch.cuda.is_available():",torch.cuda.is_available())
     #如果啟用 TensorBoard，則創建一個 TensorBoard 寫入器。
     if args.tsboard:
         writer = SummaryWriter(f'runs/data')
@@ -169,14 +169,14 @@ if __name__ == '__main__':
                                                             copy.copy(testResults[idx_i, idx_j][1].item()), 
                                                             copy.copy(testResults[idx_i, idx_j][2]))
                             break
-                        
+        '''                
         #print local_storage_t_i
         #'iter': -1, 'w_idx': -1, 'model': none, 'acc': -1.0, 'loss': -1.0
         for idx_i in range(args.num_clients): #t_i
             if idx_i in compromised_idxs:
                 pass
             else:
-                '''
+                
                 print("idx:",idx_i)
                 print(local_storage[idx_i])
                 print("\n")
@@ -189,32 +189,21 @@ if __name__ == '__main__':
                     print("'acc':", local_storage[idx_i][i][3])
                     print("'loss':", local_storage[idx_i][i][4])
                     print("\n")
-                ''' 
+        '''
+        # test_img_5net
         nets_w = [] 
-        #
-
+        accs_w = []
         for i in range(5): # client[0]中的5個storage
             if(local_storage[0][i][2] != None):
                 tmp_net = copy.deepcopy(net_glob).to(args.device)
                 tmp_net.load_state_dict(local_storage[0][i][2])
+                tmp_acc = local_storage[0][i][3]
                 nets_w.append(tmp_net)
-                #tmp_net.load_state_dict(idxModelTraindata[idx_j][0])
-        #tests_acc = test_img_5net(nets_w, dataset_test, args)  
+                accs_w.append(tmp_acc)
+        test_img_5net(nets_w, accs_w, dataset_test, args)  
         #test_acc, test_loss = test_img(net_glob.to(args.device), dataset_test, args)   
         # Ru: end    
         
-        '''
-        #Model給我如何執行 (先用w1)
-        #測試
-        for benignIdx in localBenignModels: #Ru
-            #local_DB = modelDB(localBenignModels[benignIdx], benignIdx)
-            pass
-        #test_img
-        
-        ##開始加code......
-        #w = local.train(net = copy.deepcopy(net_glob).to(args.device))
-
-        '''
         # update global weights
         if args.method == 'fedavg':
             w_glob = fedavg(w_locals)
