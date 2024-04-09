@@ -30,6 +30,8 @@ from src.update import BenignUpdate, CompromisedUpdate
 #python main.py --gpu 0 --method fedavg --tsboard --quantity_skew --patience 100 --c_frac 0.2 --sampling iid --num_clients 20 --global_ep 20 --debug
 #python main.py --gpu 0 --method fedavg --tsboard --quantity_skew --patience 100 --c_frac 0.4 --sampling iid --num_clients 20 --global_ep 20 --debug
 #python main.py --gpu 0 --method fedavg --tsboard --quantity_skew --patience 100 --c_frac 0.6 --sampling iid --num_clients 20 --global_ep 20 --debug
+
+
 #python main.py --gpu 0 --method fedavg --tsboard --quantity_skew --patience 100 --c_frac 0.8 --sampling iid --num_clients 20 --global_ep 20 --debug
 #python main.py --gpu 0 --method fedavg --tsboard --quantity_skew --patience 100 --c_frac 0.9 --sampling iid --num_clients 20 --global_ep 20 --debug
 
