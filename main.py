@@ -19,8 +19,22 @@ from utils.attack import compromised_clients, untargeted_attack
 from src.aggregation import fedavg
 from src.update import BenignUpdate, CompromisedUpdate
 
-#python main.py --gpu 0 --method krum --tsboard --c_frac 0.2 --quantity_skew --num_clients 5 --global_ep 1
-#python main.py --gpu 0 --method krum --tsboard --quantity_skew --num_clients 5 --global_ep 1
+#python main.py --gpu 0 --method krum --tsboard --c_frac 0.2 --quantity_skew --num_clients 5 --global_ep 1 --debug
+
+#python main.py --gpu 0 --method krum --tsboard --quantity_skew --c_frac 0.2 --sampling iid --num_clients 20 --global_ep 20 --debug
+#python main.py --gpu 0 --method krum --tsboard --quantity_skew --c_frac 0.4 --sampling iid --num_clients 20 --global_ep 20 --debug
+#python main.py --gpu 0 --method krum --tsboard --quantity_skew --c_frac 0.6 --sampling iid --num_clients 20 --global_ep 20 --debug
+#python main.py --gpu 0 --method krum --tsboard --quantity_skew --c_frac 0.8 --sampling iid --num_clients 20 --global_ep 20 --debug
+#python main.py --gpu 0 --method krum --tsboard --quantity_skew --c_frac 0.9 --sampling iid --num_clients 20 --global_ep 20 --debug
+
+#python main.py --gpu 0 --method fedavg --tsboard --quantity_skew --patience 100 --c_frac 0.2 --sampling iid --num_clients 20 --global_ep 20 --debug
+#python main.py --gpu 0 --method fedavg --tsboard --quantity_skew --patience 100 --c_frac 0.4 --sampling iid --num_clients 20 --global_ep 20 --debug
+#python main.py --gpu 0 --method fedavg --tsboard --quantity_skew --patience 100 --c_frac 0.6 --sampling iid --num_clients 20 --global_ep 20 --debug
+#python main.py --gpu 0 --method fedavg --tsboard --quantity_skew --patience 100 --c_frac 0.8 --sampling iid --num_clients 20 --global_ep 20 --debug
+#python main.py --gpu 0 --method fedavg --tsboard --quantity_skew --patience 100 --c_frac 0.9 --sampling iid --num_clients 20 --global_ep 20 --debug
+
+#tensorboard --logdir=runs
+#http://localhost:6006/
 #Ru
 
 #Ru
@@ -191,16 +205,25 @@ if __name__ == '__main__':
                     print("\n")
         '''
         # test_img_5net
-        nets_w = [] 
-        accs_w = []
-        for i in range(5): # client[0]中的5個storage
-            if(local_storage[0][i][2] != None):
-                tmp_net = copy.deepcopy(net_glob).to(args.device)
-                tmp_net.load_state_dict(local_storage[0][i][2])
-                tmp_acc = local_storage[0][i][3]
-                nets_w.append(tmp_net)
-                accs_w.append(tmp_acc)
-        test_img_5net(nets_w, accs_w, dataset_test, args)  
+        for i in range(args.num_clients):
+            nets_w = [] 
+            accs_w = []
+            if i in compromised_idxs:
+                pass
+            else:
+                for j in range(5): # client[i]中的5個storage
+                    if(local_storage[i][j][2] != None):
+                        tmp_net = copy.deepcopy(net_glob).to(args.device)
+                        tmp_net.load_state_dict(local_storage[i][j][2])
+                        tmp_acc = local_storage[i][j][3]
+                        nets_w.append(tmp_net)
+                        accs_w.append(tmp_acc)
+                test_acc_5net = test_img_5net(nets_w, accs_w, dataset_test, args)
+                print("client_idx", i)
+                print("test_acc_5net:", test_acc_5net)
+                # tensorboard
+                if args.tsboard:
+                    writer.add_scalar(f'test_acc_5net/{args.method}_{args.p}_cfrac_{args.c_frac}_idx_{i}', test_acc_5net, iter)
         #test_acc, test_loss = test_img(net_glob.to(args.device), dataset_test, args)   
         # Ru: end    
         

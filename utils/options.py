@@ -9,11 +9,12 @@ def args_parser():
     # --alpha: 隨機分佈數值 alpha (10.0)
     # --num_clients: users 個數 (10)
     # --num_data: users 有多少個 data (100) ??
-    # --quantity_skew: 傾斜 (??)
+    # --quantity_skew: 傾斜 (Unbalance) (不同client在數量上有差異)
     # --frac: 客戶比例 (??)
     # --ratio: 數據大小比率
     # --local_ep: local epochs train 幾次
     # --local_bs: local batch size: B
+    # python main.py --gpu 0 --method krum --tsboard --c_frac 0.2 --quantity_skew --sampling iid --num_clients 20 --global_ep 10
     
     parser.add_argument('--method', type=str, default='krum', help="aggregation method")
     parser.add_argument('--global_ep', type=int, default=200, help="total number of communication rounds")
@@ -51,6 +52,9 @@ def args_parser():
     parser.add_argument('--p', type=str, default='normal', help="model poisoning attack (target, untarget) or data poisoning")
     parser.add_argument('--mp_lambda', type=float, default=10.0, help="hyperparameter for untargeted model attack")
 
+    # Ru
+    # fraction of client choose others share models
+    parser.add_argument('--share_frac', default=0.0, type=float, help="fraction of share clients")
     args = parser.parse_args()
     
     return args

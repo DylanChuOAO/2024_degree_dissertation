@@ -28,7 +28,7 @@ def test_img(net_g, dataset, args):
             
         test_loss /= len(data_loader.dataset)
         test_acc = 100.00 * correct / len(data_loader.dataset)
-        
+        #print("normal_test_acc:", test_acc)
         return test_acc, test_loss
 
 #Ru
@@ -87,7 +87,7 @@ def test_img_5net(nets_w, accs_w, dataset, args): #nets_w[5]
             correct += y_pred.eq(target.data.view_as(y_pred)).long().cpu().sum()
             
         test_acc = 100.00 * correct / len(data_loader.dataset)
-        #print("test_acc:", test_acc)
+        #print("5net_test_acc:", test_acc)
         
         return test_acc
         
